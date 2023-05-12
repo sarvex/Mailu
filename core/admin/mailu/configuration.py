@@ -102,7 +102,7 @@ class ConfigManager:
     }
 
     def __init__(self):
-        self.config = dict()
+        self.config = {}
 
     def get_host_address(self, name):
         # if MYSERVICE_ADDRESS is defined, use this
@@ -118,19 +118,19 @@ class ConfigManager:
             self.config['WEBMAIL_ADDRESS'] = self.get_host_address('WEBMAIL')
 
     def __get_env(self, key, value):
-        key_file = key + "_FILE"
-        if key_file in os.environ:
-            with open(os.environ.get(key_file)) as file:
-                value_from_file = file.read()
-            return value_from_file.strip()
-        else:
+        key_file = f"{key}_FILE"
+        if key_file not in os.environ:
             return os.environ.get(key, value)
+        with open(os.environ.get(key_file)) as file:
+            value_from_file = file.read()
+        return value_from_file.strip()
 
     def __coerce_value(self, value):
-        if isinstance(value, str) and value.lower() in ('true','yes'):
-            return True
-        elif isinstance(value, str) and value.lower() in ('false', 'no'):
-            return False
+        if isinstance(value, str):
+            if value.lower() in ('true', 'yes'):
+                return True
+            elif value.lower() in ('false', 'no'):
+                return False
         return value
 
     def init_app(self, app):
@@ -159,8 +159,22 @@ class ConfigManager:
         self.config['AUTH_RATELIMIT_IP_V4_MASK'] = int(self.config['AUTH_RATELIMIT_IP_V4_MASK'])
         self.config['AUTH_RATELIMIT_IP_V6_MASK'] = int(self.config['AUTH_RATELIMIT_IP_V6_MASK'])
         hostnames = [host.strip() for host in self.config['HOSTNAMES'].split(',')]
-        self.config['AUTH_RATELIMIT_EXEMPTION'] = set(ipaddress.ip_network(cidr, False) for cidr in (cidr.strip() for cidr in self.config['AUTH_RATELIMIT_EXEMPTION'].split(',')) if cidr)
-        self.config['MESSAGE_RATELIMIT_EXEMPTION'] = set([s for s in self.config['MESSAGE_RATELIMIT_EXEMPTION'].lower().replace(' ', '').split(',') if s])
+        self.config['AUTH_RATELIMIT_EXEMPTION'] = {
+            ipaddress.ip_network(cidr, False)
+            for cidr in (
+                cidr.strip()
+                for cidr in self.config['AUTH_RATELIMIT_EXEMPTION'].split(',')
+            )
+            if cidr
+        }
+        self.config['MESSAGE_RATELIMIT_EXEMPTION'] = {
+            s
+            for s in self.config['MESSAGE_RATELIMIT_EXEMPTION']
+            .lower()
+            .replace(' ', '')
+            .split(',')
+            if s
+        }
         self.config['HOSTNAMES'] = ','.join(hostnames)
         self.config['HOSTNAME'] = hostnames[0]
 

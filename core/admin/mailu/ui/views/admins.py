@@ -22,11 +22,10 @@ def admin_create():
         flask_login.current_user.get_managed_emails(include_aliases=False)
     ]
     if form.validate_on_submit():
-        user = models.User.query.get(form.admin.data)
-        if user:
+        if user := models.User.query.get(form.admin.data):
             user.global_admin = True
             models.db.session.commit()
-            flask.flash('User %s is now admin' % user)
+            flask.flash(f'User {user} is now admin')
             return flask.redirect(flask.url_for('.admin_list'))
         else:
             flask.flash('No such user', 'error')
@@ -37,14 +36,13 @@ def admin_create():
 @access.global_admin
 @access.confirmation_required("delete admin {admin}")
 def admin_delete(admin):
-    user = models.User.query.get(admin)
-    if user:
+    if user := models.User.query.get(admin):
         user.global_admin  = False
         models.db.session.commit()
-        flask.flash('User %s is no longer admin' % user)
+        flask.flash(f'User {user} is no longer admin')
         return flask.redirect(flask.url_for('.admin_list'))
     else:
         flask.flash('No such user', 'error')
-    flask.flash('Alias %s deleted' % alias)
+    flask.flash(f'Alias {alias} deleted')
     return flask.redirect(
         flask.url_for('.alias_list', domain_name=alias.domain.name))

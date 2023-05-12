@@ -21,13 +21,13 @@ def relay_create():
         conflicting_alternative = models.Alternative.query.get(form.name.data)
         conflicting_relay = models.Relay.query.get(form.name.data)
         if conflicting_domain or conflicting_alternative or conflicting_relay:
-            flask.flash('Domain %s is already used' % form.name.data, 'error')
+            flask.flash(f'Domain {form.name.data} is already used', 'error')
         else:
             relay = models.Relay()
             form.populate_obj(relay)
             models.db.session.add(relay)
             models.db.session.commit()
-            flask.flash('Relayed domain %s created' % relay)
+            flask.flash(f'Relayed domain {relay} created')
             return flask.redirect(flask.url_for('.relay_list'))
     return flask.render_template('relay/create.html', form=form)
 
@@ -42,7 +42,7 @@ def relay_edit(relay_name):
     if form.validate_on_submit():
         form.populate_obj(relay)
         models.db.session.commit()
-        flask.flash('Relayed domain %s saved' % relay)
+        flask.flash(f'Relayed domain {relay} saved')
         return flask.redirect(flask.url_for('.relay_list'))
     return flask.render_template('relay/edit.html', form=form,
         relay=relay)
@@ -55,6 +55,6 @@ def relay_delete(relay_name):
     relay = models.Relay.query.get(relay_name) or flask.abort(404)
     models.db.session.delete(relay)
     models.db.session.commit()
-    flask.flash('Relayed domain %s deleted' % relay)
+    flask.flash(f'Relayed domain {relay} deleted')
     return flask.redirect(flask.url_for('.relay_list'))
 

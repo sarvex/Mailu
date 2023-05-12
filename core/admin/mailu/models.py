@@ -59,7 +59,7 @@ class IdnaEmail(db.TypeDecorator):
 
     def process_bind_param(self, value, dialect):
         """ encode unicode domain part of email address to punycode """
-        if not '@' in value:
+        if '@' not in value:
             raise ValueError('invalid email address (no "@")')
         localpart, domain_name = value.lower().rsplit('@', 1)
         if '@' in localpart:
@@ -264,17 +264,16 @@ class Domain(Base):
                 ('imaps', 993),
                 ('pop3s', 995),
             ])
-        return list([
+        return [
             f'_{proto}._tcp.{self.name}. 600 IN SRV 1 1 {port} {hostname}.'
-            for proto, port
-            in protocols
-        ])
+            for proto, port in protocols
+        ]
 
     @cached_property
     def dns_tlsa(self):
         """ return TLSA record for domain when using letsencrypt """
-        hostname = app.config['HOSTNAME']
         if app.config['TLS_FLAVOR'] in ('letsencrypt', 'mail-letsencrypt'):
+            hostname = app.config['HOSTNAME']
             # current ISRG Root X1 (RSA 4096, O = Internet Security Research Group, CN = ISRG Root X1) @20210902
             return f'_25._tcp.{hostname}. 86400 IN TLSA 2 1 0 30820222300d06092a864886f70d01010105000382020f003082020a0282020100ade82473f41437f39b9e2b57281c87bedcb7df38908c6e3ce657a078f775c2a2fef56a6ef6004f28dbde68866c4493b6b163fd14126bbf1fd2ea319b217ed1333cba48f5dd79dfb3b8ff12f1219a4bc18a8671694a66666c8f7e3c70bfad292206f3e4c0e680aee24b8fb7997e94039fd347977c99482353e838ae4f0a6f832ed149578c8074b6da2fd0388d7b0370211b75f2303cfa8faeddda63abeb164fc28e114b7ecf0be8ffb5772ef4b27b4ae04c12250c708d0329a0e15324ec13d9ee19bf10b34a8c3f89a36151deac870794f46371ec2ee26f5b9881e1895c34796c76ef3b906279e6dba49a2f26c5d010e10eded9108e16fbb7f7a8f7c7e50207988f360895e7e237960d36759efb0e72b11d9bbc03f94905d881dd05b42ad641e9ac0176950a0fd8dfd5bd121f352f28176cd298c1a80964776e4737baceac595e689d7f72d689c50641293e593edd26f524c911a75aa34c401f46a199b5a73a516e863b9e7d72a712057859ed3e5178150b038f8dd02f05b23e7b4a1c4b730512fcc6eae050137c439374b3ca74e78e1f0108d030d45b7136b407bac130305c48b7823b98a67d608aa2a32982ccbabd83041ba2830341a1d605f11bc2b6f0a87c863b46a8482a88dc769a76bf1f6aa53d198feb38f364dec82b0d0a28fff7dbe21542d422d0275de179fe18e77088ad4ee6d98b3ac6dd27516effbc64f533434f0203010001'
 
@@ -295,15 +294,15 @@ class Domain(Base):
         """ set private DKIM key """
         old_key = self.dkim_key
         self._dkim_key = value if value is not None else b''
-        if self._dkim_key != old_key:
-            if not sqlalchemy.event.contains(db.session, 'after_commit', _save_dkim_keys):
-                sqlalchemy.event.listen(db.session, 'after_commit', _save_dkim_keys)
+        if self._dkim_key != old_key and not sqlalchemy.event.contains(
+            db.session, 'after_commit', _save_dkim_keys
+        ):
+            sqlalchemy.event.listen(db.session, 'after_commit', _save_dkim_keys)
 
     @property
     def dkim_publickey(self):
         """ return public part of DKIM key """
-        dkim_key = self.dkim_key
-        if dkim_key:
+        if dkim_key := self.dkim_key:
             return dkim.strip_key(dkim_key).decode('utf8')
 
     def generate_dkim_key(self):
@@ -313,10 +312,10 @@ class Domain(Base):
     def has_email(self, localpart):
         """ checks if localpart is configured for domain """
         localpart = localpart.lower()
-        for email in chain(self.users, self.aliases):
-            if email.localpart == localpart:
-                return True
-        return False
+        return any(
+            email.localpart == localpart
+            for email in chain(self.users, self.aliases)
+        )
 
     def check_mx(self):
         """ checks if MX record for domain points to mailu host """
@@ -464,10 +463,7 @@ class Email(object):
         if stripped_alias := Alias.resolve(localpart_stripped, domain_name):
             return stripped_alias.destination
 
-        if pure_alias:
-            return pure_alias.destination
-
-        return None
+        return pure_alias.destination if pure_alias else None
 
 
 class User(Base, Email):
@@ -519,13 +515,12 @@ class User(Base, Email):
     @property
     def destination(self):
         """ returns comma separated string of destinations """
-        if self.forward_enabled:
-            result = list(self.forward_destination)
-            if self.forward_keep:
-                result.append(self.email)
-            return ','.join(result)
-        else:
+        if not self.forward_enabled:
             return self.email
+        result = list(self.forward_destination)
+        if self.forward_keep:
+            result.append(self.email)
+        return ','.join(result)
 
     @property
     def reply_active(self):
@@ -614,10 +609,7 @@ in clear-text regardless of the presence of the cache.
 
     def get_managed_domains(self):
         """ return list of domains this user can manage """
-        if self.global_admin:
-            return Domain.query.all()
-        else:
-            return self.manager_of
+        return Domain.query.all() if self.global_admin else self.manager_of
 
     def get_managed_emails(self, include_aliases=True):
         """ returns list of email addresses this user can manage """
@@ -691,16 +683,13 @@ class Alias(Base, Email):
             ).order_by(cls.wildcard, sqlalchemy.func.char_length(
                 sqlalchemy.func.lower(cls.localpart)).desc()).first()
 
-        if alias_preserve_case and alias_lower_case:
-            return alias_lower_case if alias_preserve_case.wildcard else alias_preserve_case
+        if alias_preserve_case:
+            if alias_lower_case:
+                return alias_lower_case if alias_preserve_case.wildcard else alias_preserve_case
 
-        if alias_preserve_case and not alias_lower_case:
             return alias_preserve_case
 
-        if alias_lower_case and not alias_preserve_case:
-            return alias_lower_case
-
-        return None
+        return alias_lower_case if alias_lower_case else None
 
 
 class Token(Base):
@@ -815,9 +804,8 @@ class MailuConfig:
             if not isinstance(item, self.model):
                 raise TypeError(f'expected {self.model.name}')
             key = inspect(item).identity
-            if key in self._items:
-                if not update:
-                    raise ValueError(f'item {key!r} already present in collection')
+            if key in self._items and not update:
+                raise ValueError(f'item {key!r} already present in collection')
             self._items[key] = item
 
         def extend(self, items, update=False):
@@ -834,12 +822,11 @@ class MailuConfig:
 
         def pop(self, *args):
             """ list-like (no args) and dict-like (1 or 2 args) pop """
-            if args:
-                if len(args) > 2:
-                    raise TypeError(f'pop expected at most 2 arguments, got {len(args)}')
-                return self._items.pop(*args)
-            else:
+            if not args:
                 return self._items.popitem()[1]
+            if len(args) > 2:
+                raise TypeError(f'pop expected at most 2 arguments, got {len(args)}')
+            return self._items.pop(*args)
 
         def popitem(self):
             """ dict-like popitem """
@@ -850,7 +837,7 @@ class MailuConfig:
             if not isinstance(item, self.model):
                 raise TypeError(f'expected {self.model.name}')
             key = inspect(item).identity
-            if not key in self._items:
+            if key not in self._items:
                 raise ValueError(f'item {key!r} not found in collection')
             del self._items[key]
 
@@ -897,9 +884,9 @@ class MailuConfig:
         self._models = tuple(section.model for section in self._sections.values())
 
         # model -> attr
-        self._sections.update({
+        self._sections |= {
             section.model: section for section in self._sections.values()
-        })
+        }
 
     def _get_model(self, section):
         if section is None:
@@ -907,9 +894,7 @@ class MailuConfig:
         model = self._sections.get(section)
         if model is None:
             raise ValueError(f'Invalid section: {section!r}')
-        if isinstance(model, self.MailuCollection):
-            return model.model
-        return model
+        return model.model if isinstance(model, self.MailuCollection) else model
 
     def _add(self, items, section, update):
 

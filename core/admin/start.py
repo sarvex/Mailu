@@ -16,7 +16,7 @@ password = os.environ.get("INITIAL_ADMIN_PW")
 if account is not None and domain is not None and password is not None:
     mode = os.environ.get("INITIAL_ADMIN_MODE", default="ifmissing")
     log.info("Creating initial admin accout %s@%s with mode %s",account,domain,mode)
-    os.system("flask mailu admin %s %s '%s' --mode %s" % (account, domain, password, mode))
+    os.system(f"flask mailu admin {account} {domain} '{password}' --mode {mode}")
 
 def test_DNS():
     import dns.resolver

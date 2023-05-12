@@ -11,8 +11,8 @@ import flask_login
 def login():
     client_ip = flask.request.headers.get('X-Real-IP', flask.request.remote_addr)
     form = forms.LoginForm()
-    form.submitAdmin.label.text = form.submitAdmin.label.text + ' Admin'
-    form.submitWebmail.label.text = form.submitWebmail.label.text + ' Webmail'
+    form.submitAdmin.label.text = f'{form.submitAdmin.label.text} Admin'
+    form.submitWebmail.label.text = f'{form.submitWebmail.label.text} Webmail'
 
     fields = []
     if str(app.config["WEBMAIL"]).upper() != "NONE":
@@ -34,8 +34,7 @@ def login():
         if utils.limiter.should_rate_limit_user(username, client_ip, device_cookie, device_cookie_username):
             flask.flash('Too many attempts for this user (rate-limit)', 'error')
             return flask.render_template('login.html', form=form, fields=fields)
-        user = models.User.login(username, form.pw.data)
-        if user:
+        if user := models.User.login(username, form.pw.data):
             flask.session.regenerate()
             flask_login.login_user(user)
             response = flask.redirect(destination)

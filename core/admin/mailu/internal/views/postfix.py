@@ -63,19 +63,17 @@ def postfix_transport(email):
         elif rest:
             # invalid target (rest should be :port)
             flask.abort(400)
+    elif ':' in target:
+        host, port = target.rsplit(':', 1)
     else:
-        if ':' in target:
-            host, port = target.rsplit(':', 1)
-        else:
-            host = target
-    # default for empty host part is mx:domain
+        host = target
     if not host:
-        if not use_lmtp:
-            host = relay.name.lower()
-            use_mx = True
-        else:
+        if use_lmtp:
             # lmtp: needs a host part
             flask.abort(400)
+        else:
+            host = relay.name.lower()
+            use_mx = True
     # detect ipv6 address or encode host
     if ':' in host:
         host = f'ipv6:{host}'
@@ -158,11 +156,10 @@ def postfix_sender_rate(sender):
 def postfix_sender_access(sender):
     """ Simply reject any sender that pretends to be from a local domain
     """
-    if not is_void_address(sender):
-        localpart, domain_name = models.Email.resolve_domain(sender)
-        return flask.jsonify("REJECT") if models.Domain.query.get(domain_name) else flask.abort(404)
-    else:
+    if is_void_address(sender):
         return flask.abort(404)
+    localpart, domain_name = models.Email.resolve_domain(sender)
+    return flask.jsonify("REJECT") if models.Domain.query.get(domain_name) else flask.abort(404)
 
 
 def is_void_address(email):

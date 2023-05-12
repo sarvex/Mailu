@@ -18,7 +18,10 @@ if len(sys.argv) == 3:
     part = MIMEBase('application', 'octet-stream')
     part.set_payload((open(sys.argv[2], "rb")).read())
     encoders.encode_base64(part)
-    part.add_header('Content-Disposition', "attachment; filename=%s" % ntpath.basename(sys.argv[2]))
+    part.add_header(
+        'Content-Disposition',
+        f"attachment; filename={ntpath.basename(sys.argv[2])}",
+    )
     msg.attach(part)
 
 try:
@@ -53,7 +56,9 @@ except :
 if sys.argv[1] in str(data[0][1]):
     print("Success sending and receiving email!")
 else:
-    print("Failed receiving email with message %s, message not contained" % sys.argv[1])
+    print(
+        f"Failed receiving email with message {sys.argv[1]}, message not contained"
+    )
     sys.exit(99)
 
 typ, data = imap_server.search(None, 'ALL')

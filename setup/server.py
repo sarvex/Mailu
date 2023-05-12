@@ -13,7 +13,7 @@ import time
 
 
 version = os.getenv("this_version", "master")
-static_url_path = "/" + version + "/static"
+static_url_path = f"/{version}/static"
 app = flask.Flask(__name__, static_url_path=static_url_path)
 flask_bootstrap.Bootstrap(app)
 db = redis.StrictRedis(host='redis', port=6379, db=0)
@@ -41,10 +41,9 @@ def random_ipv6_subnet():
 
     h = hashlib.sha1()
     h.update((eui64_canon + str(time.time() - time.mktime((1900, 1, 1, 0, 0, 0, 0, 1, -1)))).encode('utf-8'))
-    globalid = h.hexdigest()[0:10]
+    globalid = h.hexdigest()[:10]
 
-    prefix = ":".join(("fd" + globalid[0:2], globalid[2:6], globalid[6:10]))
-    return prefix
+    return ":".join((f"fd{globalid[:2]}", globalid[2:6], globalid[6:10]))
 
 def build_app(path):
 
@@ -96,7 +95,7 @@ def build_app(path):
         try:
             data['dns'] = str(ipaddress.IPv4Network(data['subnet'], strict=False)[-2])
         except ValueError as err:
-            return "Error while generating files: " + str(err)
+            return f"Error while generating files: {str(err)}"
         db.set(data['uid'], json.dumps(data))
         return flask.redirect(flask.url_for('.setup', uid=data['uid']))
 

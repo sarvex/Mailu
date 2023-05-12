@@ -11,29 +11,20 @@ env = os.environ
 
 logging.basicConfig(stream=sys.stderr, level=env.get("LOG_LEVEL", "WARNING"))
 
-# jinja context
-context = {}
-context.update(env)
-
+context = dict(env)
 context["MAX_FILESIZE"] = str(int(int(env.get("MESSAGE_SIZE_LIMIT", "50000000")) * 0.66 / 1048576))
 
 db_flavor = env.get("ROUNDCUBE_DB_FLAVOR", "sqlite")
 if db_flavor == "sqlite":
     context["DB_DSNW"] = "sqlite:////data/roundcube.db"
 elif db_flavor == "mysql":
-    context["DB_DSNW"] = "mysql://%s:%s@%s/%s" % (
-        env.get("ROUNDCUBE_DB_USER", "roundcube"),
-        env.get("ROUNDCUBE_DB_PW"),
-        env.get("ROUNDCUBE_DB_HOST", "database"),
-        env.get("ROUNDCUBE_DB_NAME", "roundcube")
-    )
+    context[
+        "DB_DSNW"
+    ] = f'mysql://{env.get("ROUNDCUBE_DB_USER", "roundcube")}:{env.get("ROUNDCUBE_DB_PW")}@{env.get("ROUNDCUBE_DB_HOST", "database")}/{env.get("ROUNDCUBE_DB_NAME", "roundcube")}'
 elif db_flavor == "postgresql":
-    context["DB_DSNW"] = "pgsql://%s:%s@%s/%s" % (
-        env.get("ROUNDCUBE_DB_USER", "roundcube"),
-        env.get("ROUNDCUBE_DB_PW"),
-        env.get("ROUNDCUBE_DB_HOST", "database"),
-        env.get("ROUNDCUBE_DB_NAME", "roundcube")
-    )
+    context[
+        "DB_DSNW"
+    ] = f'pgsql://{env.get("ROUNDCUBE_DB_USER", "roundcube")}:{env.get("ROUNDCUBE_DB_PW")}@{env.get("ROUNDCUBE_DB_HOST", "database")}/{env.get("ROUNDCUBE_DB_NAME", "roundcube")}'
 else:
     print(f"Unknown ROUNDCUBE_DB_FLAVOR: {db_flavor}", file=sys.stderr)
     exit(1)
@@ -51,11 +42,26 @@ context['SECRET_KEY'] = hmac.new(bytearray(secret_key, 'utf-8'), bytearray('ROUN
 
 # roundcube plugins
 # (using "dict" because it is ordered and "set" is not)
-plugins = dict((p, None) for p in env.get("ROUNDCUBE_PLUGINS", "").replace(" ", "").split(",") if p and os.path.isdir(os.path.join("/var/www/html/plugins", p)))
+plugins = {
+    p: None
+    for p in env.get("ROUNDCUBE_PLUGINS", "").replace(" ", "").split(",")
+    if p and os.path.isdir(os.path.join("/var/www/html/plugins", p))
+}
 if plugins:
     plugins["mailu"] = None
 else:
-    plugins = dict((k, None) for k in ["archive", "zipdownload", "markasjunk", "managesieve", "enigma", "carddav", "mailu"])
+    plugins = {
+        k: None
+        for k in [
+            "archive",
+            "zipdownload",
+            "markasjunk",
+            "managesieve",
+            "enigma",
+            "carddav",
+            "mailu",
+        ]
+    }
 
 context["PLUGINS"] = ",".join(f"'{p}'" for p in plugins)
 
@@ -101,7 +107,11 @@ else:
 os.system("chown -R www-data:www-data /data")
 
 # clean env
-[env.pop(key, None) for key in env.keys() if key == "SECRET_KEY" or key.startswith("ROUNDCUBE_")]
+[
+    env.pop(key, None)
+    for key in env
+    if key == "SECRET_KEY" or key.startswith("ROUNDCUBE_")
+]
 
 # run apache
 os.execve("/usr/local/bin/apache2-foreground", ["apache2-foreground"], env)

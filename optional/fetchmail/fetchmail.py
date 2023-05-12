@@ -42,22 +42,19 @@ def fetchmail(fetchmailrc):
         handler.write(fetchmailrc.encode("utf8"))
         handler.flush()
         command = FETCHMAIL.format(shlex.quote(handler.name))
-        output = subprocess.check_output(command, shell=True)
-        return output
+        return subprocess.check_output(command, shell=True)
 
 
 def run(debug):
     try:
         fetches = requests.get("http://" + os.environ.get("HOST_ADMIN", "admin") + "/internal/fetch").json()
         smtphost, smtpport = extract_host_port(os.environ.get("HOST_SMTP", "smtp"), None)
-        if smtpport is None:
-            smtphostport = smtphost
-        else:
-            smtphostport = "%s/%d" % (smtphost, smtpport)
+        smtphostport = smtphost if smtpport is None else "%s/%d" % (smtphost, smtpport)
         for fetch in fetches:
             fetchmailrc = ""
-            options = "options antispam 501, 504, 550, 553, 554"
-            options += " ssl" if fetch["tls"] else ""
+            options = "options antispam 501, 504, 550, 553, 554" + (
+                " ssl" if fetch["tls"] else ""
+            )
             options += " keep" if fetch["keep"] else " fetchall"
             fetchmailrc += RC_LINE.format(
                 user_email=escape_rc_string(fetch["user_email"]),
@@ -79,15 +76,18 @@ def run(debug):
                 # No mail is not an error
                 if not error_message.startswith("fetchmail: No mail"):
                     print(error_message)
-                user_info = "for %s at %s" % (fetch["user_email"], fetch["host"])
+                user_info = f'for {fetch["user_email"]} at {fetch["host"]}'
                 # Number of messages seen is not a error as well
                 if ("messages" in error_message and
                         "(seen " in error_message and
                         user_info in error_message):
                     print(error_message)
             finally:
-                requests.post("http://" + os.environ.get("HOST_ADMIN", "admin") + "/internal/fetch/{}".format(fetch["id"]),
-                    json=error_message.split("\n")[0]
+                requests.post(
+                    "http://"
+                    + os.environ.get("HOST_ADMIN", "admin")
+                    + f'/internal/fetch/{fetch["id"]}',
+                    json=error_message.split("\n")[0],
                 )
     except Exception:
         traceback.print_exc()

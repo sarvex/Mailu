@@ -56,8 +56,7 @@ def domain_admin(args, kwargs, model, key):
     either be Domain or an Email subclass (or any class with a
     ``domain`` attribute which stores a related Domain instance).
     """
-    obj = model.query.get(kwargs[key])
-    if obj:
+    if obj := model.query.get(kwargs[key]):
         domain = obj if type(obj) is models.Domain else obj.domain
         return domain in flask_login.current_user.get_managed_domains()
 
@@ -77,8 +76,7 @@ def owner(args, kwargs, model, key):
     """
     if kwargs[key] is None and model == models.User:
         return True
-    obj = model.query.get(kwargs[key])
-    if obj:
+    if obj := model.query.get(kwargs[key]):
         user = obj if type(obj) is models.User else obj.user
         return (
             user.email == flask_login.current_user.email

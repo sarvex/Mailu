@@ -71,7 +71,6 @@ def has_dane_record(domain, timeout=10):
         pass # this is expected, not TLSA record is fine
     except Exception as e:
         app.logger.info(f'Error while looking up the TLSA record for {domain} {e}')
-        pass
 
 # Rate limiter
 limiter = limiter.LimitWraperFactory()
@@ -93,10 +92,10 @@ babel = flask_babel.Babel()
 @babel.localeselector
 def get_locale():
     """ selects locale for translation """
-    if not app.config['SESSION_COOKIE_NAME'] in flask.request.cookies:
+    if app.config['SESSION_COOKIE_NAME'] not in flask.request.cookies:
         return flask.request.accept_languages.best_match(app.config.translations.keys())
     language = flask.session.get('language')
-    if not language in app.config.translations:
+    if language not in app.config.translations:
         language = flask.request.accept_languages.best_match(app.config.translations.keys())
         flask.session['language'] = language
     return language
@@ -501,7 +500,7 @@ def verify_temp_token(email, token):
         pass
 
 def gen_temp_token(email, session):
-    token = session.get('webmail_token', 'token-'+secrets.token_urlsafe())
+    token = session.get('webmail_token', f'token-{secrets.token_urlsafe()}')
     session['webmail_token'] = token
     app.session_store.put(token,
             session.sid,

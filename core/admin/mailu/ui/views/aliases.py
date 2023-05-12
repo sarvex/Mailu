@@ -16,8 +16,8 @@ def alias_list(domain_name):
 @access.domain_admin(models.Domain, 'domain_name')
 def alias_create(domain_name):
     domain = models.Domain.query.get(domain_name) or flask.abort(404)
-    if not domain.max_aliases == -1 and len(domain.aliases) >= domain.max_aliases:
-        flask.flash('Too many aliases for domain %s' % domain, 'error')
+    if domain.max_aliases != -1 and len(domain.aliases) >= domain.max_aliases:
+        flask.flash(f'Too many aliases for domain {domain}', 'error')
         return flask.redirect(
             flask.url_for('.alias_list', domain_name=domain.name))
     form = forms.AliasForm()
@@ -29,7 +29,7 @@ def alias_create(domain_name):
             form.populate_obj(alias)
             models.db.session.add(alias)
             models.db.session.commit()
-            flask.flash('Alias %s created' % alias)
+            flask.flash(f'Alias {alias} created')
             return flask.redirect(
                 flask.url_for('.alias_list', domain_name=domain.name))
     return flask.render_template('alias/create.html',
@@ -46,7 +46,7 @@ def alias_edit(alias):
     if form.validate_on_submit():
         form.populate_obj(alias)
         models.db.session.commit()
-        flask.flash('Alias %s updated' % alias)
+        flask.flash(f'Alias {alias} updated')
         return flask.redirect(
             flask.url_for('.alias_list', domain_name=alias.domain.name))
     return flask.render_template('alias/edit.html',
@@ -61,6 +61,6 @@ def alias_delete(alias):
     domain = alias.domain
     models.db.session.delete(alias)
     models.db.session.commit()
-    flask.flash('Alias %s deleted' % alias)
+    flask.flash(f'Alias {alias} deleted')
     return flask.redirect(
         flask.url_for('.alias_list', domain_name=domain.name))

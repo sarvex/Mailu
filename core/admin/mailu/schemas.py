@@ -39,9 +39,7 @@ _model2schema = {}
 
 def get_schema(cls=None):
     """ return schema class for model """
-    if cls is None:
-        return _model2schema.values()
-    return _model2schema.get(cls)
+    return _model2schema.values() if cls is None else _model2schema.get(cls)
 
 def mapped(cls):
     """ register schema in model2schema map """
@@ -135,7 +133,7 @@ class Logger:
         if self.verbose:
             self._log('Created', target)
 
-    def _listen_update(self, mapper, connection, target): # pylint: disable=unused-argument
+    def _listen_update(self, mapper, connection, target):    # pylint: disable=unused-argument
         """ callback method to track import """
 
         changes = {}
@@ -163,8 +161,7 @@ class Logger:
         if self.verbose:
             # use schema to log changed attributes
             schema = get_schema(target.__class__)
-            only = set(changes.keys()) & set(schema().fields.keys())
-            if only:
+            if only := set(changes.keys()) & set(schema().fields.keys()):
                 for key, value in schema(
                     only=only,
                     context=self._diff_context
@@ -259,9 +256,7 @@ class Logger:
             if isinstance(value, dict):
                 res.extend(self._format_errors(value, location))
             else:
-                for message in value:
-                    res.append((".".join(location), message))
-
+                res.extend((".".join(location), message) for message in value)
         if path:
             return res
 
@@ -326,9 +321,7 @@ class Logger:
             strip = self.strip
 
         res = highlight(data, lexer, formatter)
-        if strip:
-            return res.rstrip('\n')
-        return res
+        return res.rstrip('\n') if strip else res
 
 
 ### marshmallow render modules ###
@@ -416,9 +409,7 @@ class JSONEncoder(json.JSONEncoder):
     """ JSONEncoder supporting serialization of HIDDEN """
     def default(self, o):
         """ serialize HIDDEN """
-        if isinstance(o, _Hidden):
-            return str(o)
-        return json.JSONEncoder.default(self, o)
+        return str(o) if isinstance(o, _Hidden) else json.JSONEncoder.default(self, o)
 
 # json render module
 class RenderJSON:
@@ -460,9 +451,7 @@ def _rfc3339(datetime):
     if datetime.tzinfo is None:
         datetime = datetime.astimezone(timezone.utc)
     res = datetime.isoformat()
-    if res.endswith('+00:00'):
-        return f'{res[:-6]}Z'
-    return res
+    return f'{res[:-6]}Z' if res.endswith('+00:00') else res
 
 fields.DateTime.SERIALIZATION_FUNCS['rfc3339'] = _rfc3339
 fields.DateTime.DESERIALIZATION_FUNCS['rfc3339'] = fields.DateTime.DESERIALIZATION_FUNCS['iso']
@@ -532,11 +521,7 @@ class DkimKeyField(fields.String):
         """
 
         # map empty string and None to None
-        if not value:
-            return ''
-
-        # return multiline string
-        return _Multiline(value.decode('utf-8'))
+        return '' if not value else _Multiline(value.decode('utf-8'))
 
     def _wrap_key(self, begin, data, end):
         """ generator to wrap key into RFC 7468 format """
@@ -803,13 +788,11 @@ class BaseSchema(ma.SQLAlchemyAutoSchema, Storage):
         if keys := getattr(self.Meta, 'primary_keys', None):
             filters = {key: data.get(key) for key in keys}
             if None not in filters.values():
-                res= self.session.query(self.opts.model).filter_by(**filters).first()
-                return res
-        res= super().get_instance(data)
-        return res
+                return self.session.query(self.opts.model).filter_by(**filters).first()
+        return super().get_instance(data)
 
     @pre_load(pass_many=True)
-    def _patch_many(self, items, many, **kwargs): # pylint: disable=unused-argument
+    def _patch_many(self, items, many, **kwargs):    # pylint: disable=unused-argument
         """ - flush sqla session before serializing a section when requested
               (make sure all objects that could be referred to later are created)
             - when in update mode: patch input data before deserialization
@@ -834,7 +817,7 @@ class BaseSchema(ma.SQLAlchemyAutoSchema, Storage):
                 raise ValidationError('Unknown field.', f'{count}.__delete__')
 
             # fail when hash_password is specified without password
-            if 'hash_password' in data and not 'password' in data:
+            if 'hash_password' in data and 'password' not in data:
                 raise ValidationError(
                     'Nothing to hash. Field "password" is missing.',
                     field_name = f'{count}.hash_password',
@@ -842,22 +825,21 @@ class BaseSchema(ma.SQLAlchemyAutoSchema, Storage):
 
             # handle "prune list" and "delete item" (-pkey: none and -pkey: id)
             for key in data:
-                if key.startswith('-'):
-                    if key[1:] == self._primary:
-                        # delete or prune
-                        if data[key] is None:
-                            # prune
-                            want_prune.append(True)
-                            return None
-                        # mark item for deletion
-                        return {key[1:]: data[key], '__delete__': count}
+                if key.startswith('-') and key[1:] == self._primary:
+                    # delete or prune
+                    if data[key] is None:
+                        # prune
+                        want_prune.append(True)
+                        return None
+                    # mark item for deletion
+                    return {key[1:]: data[key], '__delete__': count}
 
             # handle "set to default value" (-key: none)
             def set_default(key, value):
                 if not key.startswith('-'):
                     return (key, value)
                 key = key[1:]
-                if not key in self.opts.model.__table__.columns:
+                if key not in self.opts.model.__table__.columns:
                     return (key, None)
                 if value is not None:
                     raise ValidationError(
@@ -890,7 +872,7 @@ class BaseSchema(ma.SQLAlchemyAutoSchema, Storage):
         return items
 
     @pre_load
-    def _patch_item(self, data, many, **kwargs): # pylint: disable=unused-argument
+    def _patch_item(self, data, many, **kwargs):    # pylint: disable=unused-argument
         """ - call callback function to track import
             - stabilize import of items with auto-increment primary key
             - delete items
@@ -908,7 +890,7 @@ class BaseSchema(ma.SQLAlchemyAutoSchema, Storage):
 
         # stabilize import of auto-increment primary keys (not required),
         # by matching import data to existing items and setting primary key
-        if not self._primary in data:
+        if self._primary not in data:
             for item in getattr(self.recall('parent'), self.recall('field', 'parent')):
                 existing = self.dump(item, many=False)
                 this = existing.pop(self._primary)
@@ -989,7 +971,7 @@ class BaseSchema(ma.SQLAlchemyAutoSchema, Storage):
         return data
 
     @post_load(pass_many=True)
-    def _prune_items(self, items, many, **kwargs): # pylint: disable=unused-argument
+    def _prune_items(self, items, many, **kwargs):    # pylint: disable=unused-argument
         """ handle list pruning """
 
         # stop early when not updating
@@ -1007,11 +989,9 @@ class BaseSchema(ma.SQLAlchemyAutoSchema, Storage):
             if not want_prune:
                 # no prune requested => add old items
                 add_items = True
-        else:
-            # parent does not prune automatically
-            if want_prune:
-                # prune requested => mark old items for deletion
-                del_items = True
+        elif want_prune:
+            # prune requested => mark old items for deletion
+            del_items = True
 
         if add_items or del_items:
             existing = {item[self._primary] for item in items if self._primary in item}
@@ -1026,12 +1006,12 @@ class BaseSchema(ma.SQLAlchemyAutoSchema, Storage):
         return items
 
     @post_load
-    def _add_instance(self, item, many, **kwargs): # pylint: disable=unused-argument
+    def _add_instance(self, item, many, **kwargs):    # pylint: disable=unused-argument
         """ - undo password change in existing instances when plain password did not change
             - add new instances to sqla session
         """
 
-        if not item in self.opts.sqla_session:
+        if item not in self.opts.sqla_session:
             self.opts.sqla_session.add(item)
             return item
 
@@ -1039,13 +1019,15 @@ class BaseSchema(ma.SQLAlchemyAutoSchema, Storage):
         if not self.context.get('update') or not hasattr(item, 'password'):
             return item
 
-        # did we hash a new plaintext password?
-        original = None
         pkey = getattr(item, self._primary)
-        for data in self.recall('original', True):
-            if 'hash_password' in data and data.get(self._primary) == pkey:
-                original = data['password']
-                break
+        original = next(
+            (
+                data['password']
+                for data in self.recall('original', True)
+                if 'hash_password' in data and data.get(self._primary) == pkey
+            ),
+            None,
+        )
         if original is None:
             # password was hashed by us
             return item

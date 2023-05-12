@@ -27,11 +27,11 @@ def manager_create(domain_name):
         if user.email not in [user.email for user in available_users]:
             flask.abort(403)
         elif user in domain.managers:
-            flask.flash('User %s is already manager' % user, 'error')
+            flask.flash(f'User {user} is already manager', 'error')
         else:
             domain.managers.append(user)
             models.db.session.commit()
-            flask.flash('User %s can now manage %s' % (user, domain.name))
+            flask.flash(f'User {user} can now manage {domain.name}')
             return flask.redirect(
                 flask.url_for('.manager_list', domain_name=domain.name))
     return flask.render_template('manager/create.html',
@@ -47,8 +47,8 @@ def manager_delete(domain_name, user_email):
     if user in domain.managers:
         domain.managers.remove(user)
         models.db.session.commit()
-        flask.flash('User %s can no longer manager %s' % (user, domain))
+        flask.flash(f'User {user} can no longer manager {domain}')
     else:
-        flask.flash('User %s is not manager' % user, 'error')
+        flask.flash(f'User {user} is not manager', 'error')
     return flask.redirect(
         flask.url_for('.manager_list', domain_name=domain_name))

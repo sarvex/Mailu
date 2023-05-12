@@ -9,8 +9,7 @@ import os
 @internal.route("/dovecot/passdb/<path:user_email>")
 def dovecot_passdb_dict(user_email):
     user = models.User.query.get(user_email) or flask.abort(404)
-    allow_nets = []
-    allow_nets.append(app.config["SUBNET"])
+    allow_nets = [app.config["SUBNET"]]
     if app.config["SUBNET6"]:
         allow_nets.append(app.config["SUBNET6"])
     if app.config["POD_ADDRESS_RANGE"]:
@@ -25,9 +24,7 @@ def dovecot_passdb_dict(user_email):
 @internal.route("/dovecot/userdb/<path:user_email>")
 def dovecot_userdb_dict(user_email):
     user = models.User.query.get(user_email) or flask.abort(404)
-    return flask.jsonify({
-        "quota_rule": "*:bytes={}".format(user.quota_bytes)
-    })
+    return flask.jsonify({"quota_rule": f"*:bytes={user.quota_bytes}"})
 
 
 @internal.route("/dovecot/quota/<ns>/<path:user_email>", methods=["POST"])

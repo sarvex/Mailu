@@ -3,7 +3,7 @@
 import sys
 import tabulate
 
-sys.path[0:0] = ['/app']
+sys.path[:0] = ['/app']
 
 import mailu
 app = mailu.create_app()
@@ -21,8 +21,7 @@ known_missing_permissions = [
 missing_permissions = []
 permissions = {}
 for endpoint, function in app.view_functions.items():
-    audit = function.__dict__.get('_audit_permissions')
-    if audit:
+    if audit := function.__dict__.get('_audit_permissions'):
         handler, args = audit
         if args:
             model = args[0].__name__

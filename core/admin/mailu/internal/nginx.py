@@ -30,11 +30,11 @@ STATUSES = {
 def check_credentials(user, password, ip, protocol=None, auth_port=None):
     if not user or not user.enabled or (protocol == "imap" and not user.enable_imap) or (protocol == "pop3" and not user.enable_pop):
         return False
-    is_ok = False
-    # webmails
-    if auth_port in ['10143', '10025'] and password.startswith('token-'):
-        if utils.verify_temp_token(user.get_id(), password):
-            is_ok = True
+    is_ok = bool(
+        auth_port in ['10143', '10025']
+        and password.startswith('token-')
+        and utils.verify_temp_token(user.get_id(), password)
+    )
     # All tokens are 32 characters hex lowercase
     if not is_ok and len(password) == 32:
         for token in user.tokens:
@@ -55,27 +55,24 @@ def handle_authentication(headers):
     # Incoming mail, no authentication
     if method == "none" and protocol == "smtp":
         server, port = get_server(protocol, False)
-        if app.config["INBOUND_TLS_ENFORCE"]:
-            if "Auth-SSL" in headers and headers["Auth-SSL"] == "on":
-                return {
-                    "Auth-Status": "OK",
-                    "Auth-Server": server,
-                    "Auth-Port": port
-                }
-            else:
-                status, code = get_status(protocol, "encryption")
-                return {
-                    "Auth-Status": status,
-                    "Auth-Error-Code" : code,
-                    "Auth-Wait": 0
-                }
-        else:
+        if not app.config["INBOUND_TLS_ENFORCE"]:
             return {
                 "Auth-Status": "OK",
                 "Auth-Server": server,
                 "Auth-Port": port
             }
-    # Authenticated user
+        if "Auth-SSL" in headers and headers["Auth-SSL"] == "on":
+            return {
+                "Auth-Status": "OK",
+                "Auth-Server": server,
+                "Auth-Port": port
+            }
+        status, code = get_status(protocol, "encryption")
+        return {
+            "Auth-Status": status,
+            "Auth-Error-Code" : code,
+            "Auth-Wait": 0
+        }
     elif method == "plain":
         is_valid_user = False
         # According to RFC2616 section 3.7.1 and PEP 3333, HTTP headers should

@@ -25,13 +25,21 @@ if args["WEBDAV"] != "none":
 cert_name = os.getenv("TLS_CERT_FILENAME", default="cert.pem")
 keypair_name = os.getenv("TLS_KEYPAIR_FILENAME", default="key.pem")
 args["TLS"] = {
-    "cert": ("/certs/%s" % cert_name, "/certs/%s" % keypair_name),
-    "letsencrypt": ("/certs/letsencrypt/live/mailu/nginx-chain.pem",
-        "/certs/letsencrypt/live/mailu/privkey.pem", "/certs/letsencrypt/live/mailu-ecdsa/nginx-chain.pem", "/certs/letsencrypt/live/mailu-ecdsa/privkey.pem"),
-    "mail": ("/certs/%s" % cert_name, "/certs/%s" % keypair_name),
-    "mail-letsencrypt": ("/certs/letsencrypt/live/mailu/nginx-chain.pem",
-        "/certs/letsencrypt/live/mailu/privkey.pem", "/certs/letsencrypt/live/mailu-ecdsa/nginx-chain.pem", "/certs/letsencrypt/live/mailu-ecdsa/privkey.pem"),
-    "notls": None
+    "cert": (f"/certs/{cert_name}", f"/certs/{keypair_name}"),
+    "letsencrypt": (
+        "/certs/letsencrypt/live/mailu/nginx-chain.pem",
+        "/certs/letsencrypt/live/mailu/privkey.pem",
+        "/certs/letsencrypt/live/mailu-ecdsa/nginx-chain.pem",
+        "/certs/letsencrypt/live/mailu-ecdsa/privkey.pem",
+    ),
+    "mail": (f"/certs/{cert_name}", f"/certs/{keypair_name}"),
+    "mail-letsencrypt": (
+        "/certs/letsencrypt/live/mailu/nginx-chain.pem",
+        "/certs/letsencrypt/live/mailu/privkey.pem",
+        "/certs/letsencrypt/live/mailu-ecdsa/nginx-chain.pem",
+        "/certs/letsencrypt/live/mailu-ecdsa/privkey.pem",
+    ),
+    "notls": None,
 }[args["TLS_FLAVOR"]]
 
 if args["TLS"] and not all(os.path.exists(file_path) for file_path in args["TLS"]):

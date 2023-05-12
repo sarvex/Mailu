@@ -22,13 +22,13 @@ def domain_create():
         conflicting_alternative = models.Alternative.query.get(form.name.data)
         conflicting_relay = models.Relay.query.get(form.name.data)
         if conflicting_domain or conflicting_alternative or conflicting_relay:
-            flask.flash('Domain %s is already used' % form.name.data, 'error')
+            flask.flash(f'Domain {form.name.data} is already used', 'error')
         else:
             domain = models.Domain()
             form.populate_obj(domain)
             models.db.session.add(domain)
             models.db.session.commit()
-            flask.flash('Domain %s created' % domain)
+            flask.flash(f'Domain {domain} created')
             return flask.redirect(flask.url_for('.domain_list'))
     return flask.render_template('domain/create.html', form=form)
 
@@ -43,7 +43,7 @@ def domain_edit(domain_name):
     if form.validate_on_submit():
         form.populate_obj(domain)
         models.db.session.commit()
-        flask.flash('Domain %s saved' % domain)
+        flask.flash(f'Domain {domain} saved')
         return flask.redirect(flask.url_for('.domain_list'))
     return flask.render_template('domain/edit.html', form=form,
         domain=domain)
@@ -56,7 +56,7 @@ def domain_delete(domain_name):
     domain = models.Domain.query.get(domain_name) or flask.abort(404)
     models.db.session.delete(domain)
     models.db.session.commit()
-    flask.flash('Domain %s deleted' % domain)
+    flask.flash(f'Domain {domain} deleted')
     return flask.redirect(flask.url_for('.domain_list'))
 
 
@@ -93,7 +93,7 @@ def domain_signup(domain_name=None):
         conflicting_alternative = models.Alternative.query.get(form.name.data)
         conflicting_relay = models.Relay.query.get(form.name.data)
         if conflicting_domain or conflicting_alternative or conflicting_relay:
-            flask.flash('Domain %s is already used' % form.name.data, 'error')
+            flask.flash(f'Domain {form.name.data} is already used', 'error')
         else:
             domain = models.Domain()
             form.populate_obj(domain)
@@ -113,7 +113,7 @@ def domain_signup(domain_name=None):
                 models.db.session.add(user)
                 domain.managers.append(user)
                 models.db.session.commit()
-                flask.flash('Domain %s created' % domain)
+                flask.flash(f'Domain {domain} created')
                 return flask.redirect(flask.url_for('.domain_list'))
             else:
                 flask.flash('The MX record was not properly set', 'error')

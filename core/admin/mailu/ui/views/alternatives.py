@@ -22,13 +22,13 @@ def alternative_create(domain_name):
         conflicting_alternative = models.Alternative.query.get(form.name.data)
         conflicting_relay = models.Relay.query.get(form.name.data)
         if conflicting_domain or conflicting_alternative or conflicting_relay:
-            flask.flash('Domain %s is already used' % form.name.data, 'error')
+            flask.flash(f'Domain {form.name.data} is already used', 'error')
         else:
             alternative = models.Alternative(domain=domain)
             form.populate_obj(alternative)
             models.db.session.add(alternative)
             models.db.session.commit()
-            flask.flash('Alternative domain %s created' % alternative)
+            flask.flash(f'Alternative domain {alternative} created')
             return flask.redirect(
                 flask.url_for('.alternative_list', domain_name=domain.name))
     return flask.render_template('alternative/create.html',
@@ -43,6 +43,6 @@ def alternative_delete(alternative):
     domain = alternative.domain
     models.db.session.delete(alternative)
     models.db.session.commit()
-    flask.flash('Alternative %s deleted' % alternative)
+    flask.flash(f'Alternative {alternative} deleted')
     return flask.redirect(
         flask.url_for('.alternative_list', domain_name=domain.name))

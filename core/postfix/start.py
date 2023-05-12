@@ -18,18 +18,23 @@ def start_podop():
     os.mkdir('/dev/shm/postfix',mode=0o700)
     url = "http://" + os.environ["ADMIN_ADDRESS"] + "/internal/postfix/"
     # TODO: Remove verbosity setting from Podop?
-    run_server(0, "postfix", "/tmp/podop.socket", [
-        ("transport", "url", url + "transport/§"),
-        ("alias", "url", url + "alias/§"),
-        ("dane", "url", url + "dane/§"),
-        ("domain", "url", url + "domain/§"),
-        ("mailbox", "url", url + "mailbox/§"),
-        ("recipientmap", "url", url + "recipient/map/§"),
-        ("sendermap", "url", url + "sender/map/§"),
-        ("senderaccess", "url", url + "sender/access/§"),
-        ("senderlogin", "url", url + "sender/login/§"),
-        ("senderrate", "url", url + "sender/rate/§")
-    ])
+    run_server(
+        0,
+        "postfix",
+        "/tmp/podop.socket",
+        [
+            ("transport", "url", f"{url}transport/§"),
+            ("alias", "url", f"{url}alias/§"),
+            ("dane", "url", f"{url}dane/§"),
+            ("domain", "url", f"{url}domain/§"),
+            ("mailbox", "url", f"{url}mailbox/§"),
+            ("recipientmap", "url", f"{url}recipient/map/§"),
+            ("sendermap", "url", f"{url}sender/map/§"),
+            ("senderaccess", "url", f"{url}sender/access/§"),
+            ("senderlogin", "url", f"{url}sender/login/§"),
+            ("senderrate", "url", f"{url}sender/rate/§"),
+        ],
+    )
 
 def start_mta_sts_daemon():
     os.chmod("/root/", 0o755) # read access to /root/.netrc required
@@ -38,11 +43,10 @@ def start_mta_sts_daemon():
     daemon.main()
 
 def is_valid_postconf_line(line):
-    return not line.startswith("#") \
-            and not line == ''
+    return not line.startswith("#") and line != ''
 
 # Actual startup script
-os.environ['DEFER_ON_TLS_ERROR'] = os.environ['DEFER_ON_TLS_ERROR'] if 'DEFER_ON_TLS_ERROR' in os.environ else 'True'
+os.environ['DEFER_ON_TLS_ERROR'] = os.environ.get('DEFER_ON_TLS_ERROR', 'True')
 os.environ["FRONT_ADDRESS"] = system.get_host_address_from_environment("FRONT", "front")
 os.environ["ADMIN_ADDRESS"] = system.get_host_address_from_environment("ADMIN", "admin")
 os.environ["ANTISPAM_MILTER_ADDRESS"] = system.get_host_address_from_environment("ANTISPAM_MILTER", "antispam:11332")
@@ -56,17 +60,17 @@ for postfix_file in glob.glob("/conf/*.cf"):
 if os.path.exists("/overrides/postfix.cf"):
     for line in open("/overrides/postfix.cf").read().strip().split("\n"):
         if is_valid_postconf_line(line):
-            os.system('postconf -e "{}"'.format(line))
+            os.system(f'postconf -e "{line}"')
 
 if os.path.exists("/overrides/postfix.master"):
     for line in open("/overrides/postfix.master").read().strip().split("\n"):
         if is_valid_postconf_line(line):
-            os.system('postconf -Me "{}"'.format(line))
+            os.system(f'postconf -Me "{line}"')
 
 for map_file in glob.glob("/overrides/*.map"):
     destination = os.path.join("/etc/postfix", os.path.basename(map_file))
     shutil.copyfile(map_file, destination)
-    os.system("postmap {}".format(destination))
+    os.system(f"postmap {destination}")
     os.remove(destination)
 
 if os.path.exists("/overrides/mta-sts-daemon.yml"):
@@ -81,7 +85,7 @@ if not os.path.exists("/etc/postfix/tls_policy.map.lmdb"):
 if "RELAYUSER" in os.environ:
     path = "/etc/postfix/sasl_passwd"
     conf.jinja("/conf/sasl_passwd", os.environ, path)
-    os.system("postmap {}".format(path))
+    os.system(f"postmap {path}")
 
 # Configure and start local rsyslog server
 conf.jinja("/conf/rsyslog.conf", os.environ, "/etc/rsyslog.conf")

@@ -18,8 +18,8 @@ def user_list(domain_name):
 @access.domain_admin(models.Domain, 'domain_name')
 def user_create(domain_name):
     domain = models.Domain.query.get(domain_name) or flask.abort(404)
-    if not domain.max_users == -1 and len(domain.users) >= domain.max_users:
-        flask.flash('Too many users for domain %s' % domain, 'error')
+    if domain.max_users != -1 and len(domain.users) >= domain.max_users:
+        flask.flash(f'Too many users for domain {domain}', 'error')
         return flask.redirect(
             flask.url_for('.user_list', domain_name=domain.name))
     form = forms.UserForm()
@@ -37,7 +37,7 @@ def user_create(domain_name):
             models.db.session.add(user)
             models.db.session.commit()
             user.send_welcome()
-            flask.flash('User %s created' % user)
+            flask.flash(f'User {user} created')
             return flask.redirect(
                 flask.url_for('.user_list', domain_name=domain.name))
     return flask.render_template('user/create.html',
@@ -64,7 +64,7 @@ def user_edit(user_email):
         if form.pw.data:
             user.set_password(form.pw.data)
         models.db.session.commit()
-        flask.flash('User %s updated' % user)
+        flask.flash(f'User {user} updated')
         return flask.redirect(
             flask.url_for('.user_list', domain_name=user.domain.name))
     return flask.render_template('user/edit.html', form=form, user=user,
@@ -79,7 +79,7 @@ def user_delete(user_email):
     domain = user.domain
     models.db.session.delete(user)
     models.db.session.commit()
-    flask.flash('User %s deleted' % user)
+    flask.flash(f'User {user} deleted')
     return flask.redirect(
         flask.url_for('.user_list', domain_name=domain.name))
 
@@ -101,7 +101,7 @@ def user_settings(user_email):
         form.populate_obj(user)
         models.db.session.commit()
         form.forward_destination.data = ", ".join(form.forward_destination.data)
-        flask.flash('Settings updated for %s' % user)
+        flask.flash(f'Settings updated for {user}')
         if user_email:
             return flask.redirect(
                 flask.url_for('.user_list', domain_name=user.domain.name))
@@ -122,7 +122,7 @@ def user_password(user_email):
             flask.session.regenerate()
             user.set_password(form.pw.data)
             models.db.session.commit()
-            flask.flash('Password updated for %s' % user)
+            flask.flash(f'Password updated for {user}')
             if user_email:
                 return flask.redirect(flask.url_for('.user_list',
                     domain_name=user.domain.name))
@@ -139,7 +139,7 @@ def user_reply(user_email):
     if form.validate_on_submit():
         form.populate_obj(user)
         models.db.session.commit()
-        flask.flash('Auto-reply message updated for %s' % user)
+        flask.flash(f'Auto-reply message updated for {user}')
         if user_email:
             return flask.redirect(
                 flask.url_for('.user_list', domain_name=user.domain.name))
@@ -178,6 +178,6 @@ def user_signup(domain_name=None):
             models.db.session.add(user)
             models.db.session.commit()
             user.send_welcome()
-            flask.flash('Successfully signed up %s' % user)
+            flask.flash(f'Successfully signed up {user}')
             return flask.redirect(flask.url_for('.index'))
     return flask.render_template('user/signup.html', domain=domain, form=form)
